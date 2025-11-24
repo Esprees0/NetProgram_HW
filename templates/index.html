@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SNMP Port Management Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 10px;
+        }
+
+        .subnet {
+            color: #94a3b8;
+            font-size: 1rem;
+        }
+
+        .flash-messages {
+            max-width: 600px;
+            margin: 0 auto 30px;
+        }
+
+        .flash {
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            font-weight: 500;
+            animation: slideIn 0.3s ease;
+        }
+
+        .flash.success {
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid #22c55e;
+            color: #4ade80;
+        }
+
+        .flash.error {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid #ef4444;
+            color: #f87171;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .section-title {
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .icon {
+            width: 28px;
+            height: 28px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2;
+        }
+
+        .device-section {
+            margin-bottom: 50px;
+        }
+
+        .devices-grid {
+            display: grid;
+            gap: 30px;
+        }
+
+        .device-card {
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(10px);
+            border: 1px solid #334155;
+            border-radius: 16px;
+            padding: 24px;
+        }
+
+        .device-header {
+            margin-bottom: 20px;
+        }
+
+        .device-name {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 5px;
+        }
+
+        .device-ip {
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+
+        .ports-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .port-form {
+            position: relative;
+        }
+
+        .port-btn {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            border: 3px solid;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.95rem;
+            background: none;
+            color: inherit;
+            padding: 10px;
+        }
+
+        .port-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .port-btn.status-up {
+            background: #22c55e;
+            border-color: #16a34a;
+            color: white;
+            box-shadow: 0 10px 30px rgba(34, 197, 94, 0.4);
+        }
+
+        .port-btn.status-down {
+            background: #ef4444;
+            border-color: #dc2626;
+            color: white;
+            box-shadow: 0 10px 30px rgba(239, 68, 68, 0.4);
+        }
+
+        .port-btn.status-unknown {
+            background: #64748b;
+            border-color: #475569;
+            color: white;
+            box-shadow: 0 10px 30px rgba(100, 116, 139, 0.4);
+        }
+
+        .port-label {
+            font-size: 1.1rem;
+            margin-bottom: 4px;
+        }
+
+        .port-connection {
+            font-size: 0.75rem;
+            opacity: 0.9;
+            margin-bottom: 4px;
+        }
+
+        .port-status {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .legend {
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(10px);
+            border: 1px solid #334155;
+            border-radius: 16px;
+            padding: 24px;
+            margin-top: 30px;
+        }
+
+        .legend h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 15px;
+        }
+
+        .legend-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .legend-box {
+            width: 30px;
+            height: 30px;
+            border-radius: 6px;
+            border: 2px solid;
+        }
+
+        .legend-box.status-up {
+            background: #22c55e;
+            border-color: #16a34a;
+        }
+
+        .legend-box.status-down {
+            background: #ef4444;
+            border-color: #dc2626;
+        }
+
+        .info-text {
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .section-title {
+                font-size: 1.5rem;
+            }
+
+            .ports-grid {
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+                gap: 10px;
+            }
+
+            .device-card {
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>Network Port Management Dashboard</h1>
+            <p class="subnet">192.168.84.145/24 Network</p>
+        </header>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="flash {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <!-- Routers Section -->
+        <section class="device-section">
+            <h2 class="section-title">
+                <svg class="icon" viewBox="0 0 24 24">
+                    <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+                    <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+                    <line x1="6" y1="6" x2="6.01" y2="6"></line>
+                    <line x1="6" y1="18" x2="6.01" y2="18"></line>
+                </svg>
+                Routers
+            </h2>
+            <div class="devices-grid">
+                {% for name, device in data.routers.items() %}
+                <div class="device-card">
+                    <div class="device-header">
+                        <div class="device-name">{{ name }}</div>
+                        <div class="device-ip">{{ device.ip }}</div>
+                    </div>
+                    <div class="ports-grid">
+                        {% for port in device.ports %}
+                        <form class="port-form" method="POST" action="/toggle">
+                            <input type="hidden" name="device" value="{{ name }}">
+                            <input type="hidden" name="port_id" value="{{ port.id }}">
+                            <button type="submit" class="port-btn status-{{ port.status }}">
+                                <div class="port-label">Port {{ port.id }}</div>
+                                {% if port.connected %}
+                                <div class="port-connection">→ {{ port.connected }}</div>
+                                {% endif %}
+                                <div class="port-status">{{ port.status|upper }}</div>
+                            </button>
+                        </form>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <!-- Switches Section -->
+        <section class="device-section">
+            <h2 class="section-title">
+                <svg class="icon" viewBox="0 0 24 24">
+                    <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+                    <line x1="9" y1="9" x2="15" y2="9"></line>
+                    <line x1="9" y1="15" x2="15" y2="15"></line>
+                </svg>
+                Layer 3 Switches
+            </h2>
+            <div class="devices-grid">
+                {% for name, device in data.switches.items() %}
+                <div class="device-card">
+                    <div class="device-header">
+                        <div class="device-name">{{ name }} - Layer 3 Switch</div>
+                        <div class="device-ip">{{ device.ip }}</div>
+                    </div>
+                    <div class="ports-grid">
+                        {% for port in device.ports %}
+                        <form class="port-form" method="POST" action="/toggle">
+                            <input type="hidden" name="device" value="{{ name }}">
+                            <input type="hidden" name="port_id" value="{{ port.id }}">
+                            <button type="submit" class="port-btn status-{{ port.status }}">
+                                <div class="port-label">Port {{ port.id }}</div>
+                                {% if port.connected %}
+                                <div class="port-connection">→ {{ port.connected }}</div>
+                                {% endif %}
+                                <div class="port-status">{{ port.status|upper }}</div>
+                            </button>
+                        </form>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <!-- Legend -->
+        <section class="legend">
+            <h3>Legend</h3>
+            <div class="legend-items">
+                <div class="legend-item">
+                    <div class="legend-box status-up"></div>
+                    <span>Port UP (Active)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box status-down"></div>
+                    <span>Port DOWN (Inactive)</span>
+                </div>
+                <div class="legend-item">
+                    <span class="info-text">💡 Click any port to toggle status</span>
+                </div>
+            </div>
+        </section>
+    </div>
+</body>
+</html>
