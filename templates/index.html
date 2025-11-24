@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="/static/Iconwebsite.png" type="image/x-icon">
     <title>SNMP Port Management Dashboard</title>
     <style>
         * {
@@ -39,6 +40,12 @@
         .subnet {
             color: #94a3b8;
             font-size: 1rem;
+        }
+
+        .demo-badge {
+            color: #fbbf24;
+            margin-top: 10px;
+            font-size: 0.9rem;
         }
 
         .flash-messages {
@@ -90,9 +97,6 @@
         .icon {
             width: 28px;
             height: 28px;
-            stroke: currentColor;
-            fill: none;
-            stroke-width: 2;
         }
 
         .device-section {
@@ -101,7 +105,8 @@
 
         .devices-grid {
             display: grid;
-            gap: 30px;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
         }
 
         .device-card {
@@ -110,14 +115,48 @@
             border: 1px solid #334155;
             border-radius: 16px;
             padding: 24px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
         }
 
-        .device-header {
-            margin-bottom: 20px;
+        .device-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3);
+            border-color: #3b82f6;
+        }
+
+        .device-card.expanded {
+            grid-column: 1 / -1;
+            cursor: default;
+        }
+
+        .device-card.expanded:hover {
+            transform: none;
+        }
+
+        .device-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 15px;
+            background: linear-gradient(135deg, #d5e2f7, #464648);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.4);
+            overflow: hidden;
+        }
+
+        .device-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            padding: 10px;
         }
 
         .device-name {
-            font-size: 1.5rem;
+            font-size: 1.3rem;
             font-weight: 600;
             color: #fff;
             margin-bottom: 5px;
@@ -125,12 +164,89 @@
 
         .device-ip {
             color: #94a3b8;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
+            margin-bottom: 10px;
+        }
+
+        .device-status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .device-status.online {
+            background: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+            border: 1px solid #22c55e;
+        }
+
+        .device-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #334155;
+        }
+
+        .device-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .device-icon-small {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .device-icon-small img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            padding: 8px;
+        }
+
+        .close-btn {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid #ef4444;
+            color: #f87171;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .close-btn:hover {
+            background: rgba(239, 68, 68, 0.3);
+            transform: scale(1.05);
+        }
+
+        .ports-container {
+            display: none;
+        }
+
+        .device-card.expanded .ports-container {
+            display: block;
+        }
+
+        .device-card:not(.expanded) .device-header,
+        .device-card:not(.expanded) .close-btn {
+            display: none;
         }
 
         .ports-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
             gap: 15px;
         }
 
@@ -179,6 +295,13 @@
             border-color: #475569;
             color: white;
             box-shadow: 0 10px 30px rgba(100, 116, 139, 0.4);
+        }
+
+        .port-interface {
+            font-size: 0.75rem;
+            margin-bottom: 4px;
+            opacity: 0.95;
+            font-weight: 500;
         }
 
         .port-label {
@@ -257,26 +380,29 @@
                 font-size: 1.5rem;
             }
 
-            .ports-grid {
-                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-                gap: 10px;
+            .devices-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
             }
 
-            .device-card {
-                padding: 16px;
+            .ports-grid {
+                grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+                gap: 10px;
             }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Header -->
         <header class="header">
             <h1>Network Port Management Dashboard</h1>
             <p class="subnet">192.168.84.145/24 Network</p>
+            {% if demo_mode %}
+            <p class="demo-badge">
+                🎭 DEMO MODE - คลิกเปลี่ยนสถานะได้เลย (ไม่ใช้ SNMP จริง)
+            </p>
+            {% endif %}
         </header>
 
-        <!-- Flash Messages -->
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 <div class="flash-messages">
@@ -287,82 +413,112 @@
             {% endif %}
         {% endwith %}
 
-        <!-- Routers Section -->
         <section class="device-section">
             <h2 class="section-title">
-                <svg class="icon" viewBox="0 0 24 24">
-                    <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
-                    <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
-                    <line x1="6" y1="6" x2="6.01" y2="6"></line>
-                    <line x1="6" y1="18" x2="6.01" y2="18"></line>
-                </svg>
+                <img src="{{ url_for('static', filename='iconRouter.png') }}" alt="Router" class="icon" onerror="this.style.display='none'">
                 Routers
             </h2>
             <div class="devices-grid">
                 {% for name, device in data.routers.items() %}
-                <div class="device-card">
-                    <div class="device-header">
-                        <div class="device-name">{{ name }}</div>
-                        <div class="device-ip">{{ device.ip }}</div>
+                <div class="device-card {% if expanded_device == name %}expanded{% endif %}" id="device-{{ name }}">
+                    <div class="device-icon" onclick="toggleDevice('{{ name }}')">
+                        <img src="{{ url_for('static', filename='iconlistRouter.png') }}" alt="Router Icon">
                     </div>
-                    <div class="ports-grid">
-                        {% for port in device.ports %}
-                        <form class="port-form" method="POST" action="/toggle">
-                            <input type="hidden" name="device" value="{{ name }}">
-                            <input type="hidden" name="port_id" value="{{ port.id }}">
-                            <button type="submit" class="port-btn status-{{ port.status }}">
-                                <div class="port-label">Port {{ port.id }}</div>
-                                {% if port.connected %}
-                                <div class="port-connection">→ {{ port.connected }}</div>
-                                {% endif %}
-                                <div class="port-status">{{ port.status|upper }}</div>
+                    <div class="device-name" onclick="toggleDevice('{{ name }}')">{{ name }}</div>
+                    <div class="device-ip" onclick="toggleDevice('{{ name }}')">{{ device.ip }}</div>
+                    <span class="device-status online" onclick="toggleDevice('{{ name }}')">ONLINE</span>
+
+                    <div class="ports-container">
+                        <div class="device-header">
+                            <div class="device-info">
+                                <div class="device-icon-small">
+                                    <img src="{{ url_for('static', filename='iconlistRouter.png') }}" alt="Router">
+                                </div>
+                                <div>
+                                    <div class="device-name">{{ name }}</div>
+                                    <div class="device-ip">{{ device.ip }}</div>
+                                </div>
+                            </div>
+                            <button class="close-btn" onclick="closeDevice('{{ name }}')">
+                                ✕ Close
                             </button>
-                        </form>
-                        {% endfor %}
+                        </div>
+
+                        <div class="ports-grid">
+                            {% for port in device.ports %}
+                            <form class="port-form" method="POST" action="/toggle">
+                                <input type="hidden" name="device" value="{{ name }}">
+                                <input type="hidden" name="port_id" value="{{ port.id }}">
+                                <button type="submit" class="port-btn status-{{ port.status }}">
+                                    <div class="port-interface">{{ port.interface }}</div>
+                                    <div class="port-label">Port {{ port.id }}</div>
+                                    {% if port.connected %}
+                                    <div class="port-connection">→ {{ port.connected }}</div>
+                                    {% endif %}
+                                    <div class="port-status">{{ port.status|upper }}</div>
+                                </button>
+                            </form>
+                            {% endfor %}
+                        </div>
                     </div>
                 </div>
                 {% endfor %}
             </div>
         </section>
 
-        <!-- Switches Section -->
         <section class="device-section">
             <h2 class="section-title">
-                <svg class="icon" viewBox="0 0 24 24">
-                    <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
-                    <line x1="9" y1="9" x2="15" y2="9"></line>
-                    <line x1="9" y1="15" x2="15" y2="15"></line>
-                </svg>
-                Switchs
+                <img src="{{ url_for('static', filename='switch_512x512.png') }}" alt="Switch" class="icon" onerror="this.style.display='none'">
+                Layer 3 Switches
             </h2>
             <div class="devices-grid">
                 {% for name, device in data.switches.items() %}
-                <div class="device-card">
-                    <div class="device-header">
-                        <div class="device-name">{{ name }} - Layer 3 Switch</div>
-                        <div class="device-ip">{{ device.ip }}</div>
+                <div class="device-card {% if expanded_device == name %}expanded{% endif %}" id="device-{{ name }}">
+                    <div class="device-icon" onclick="toggleDevice('{{ name }}')">
+                        <img src="{{ url_for('static', filename='layer-3-switch.png') }}" alt="Switch Icon">
                     </div>
-                    <div class="ports-grid">
-                        {% for port in device.ports %}
-                        <form class="port-form" method="POST" action="/toggle">
-                            <input type="hidden" name="device" value="{{ name }}">
-                            <input type="hidden" name="port_id" value="{{ port.id }}">
-                            <button type="submit" class="port-btn status-{{ port.status }}">
-                                <div class="port-label">Port {{ port.id }}</div>
-                                {% if port.connected %}
-                                <div class="port-connection">→ {{ port.connected }}</div>
-                                {% endif %}
-                                <div class="port-status">{{ port.status|upper }}</div>
+                    <div class="device-name" onclick="toggleDevice('{{ name }}')">{{ name }}</div>
+                    <div class="device-ip" onclick="toggleDevice('{{ name }}')">{{ device.ip }}</div>
+                    <span class="device-status online" onclick="toggleDevice('{{ name }}')">ONLINE</span>
+
+                    <div class="ports-container">
+                        <div class="device-header">
+                            <div class="device-info">
+                                <div class="device-icon-small">
+                                    <img src="{{ url_for('static', filename='layer-3-switch.png') }}" alt="Switch">
+                                </div>
+                                <div>
+                                    <div class="device-name">{{ name }} - Layer 3 Switch</div>
+                                    <div class="device-ip">{{ device.ip }}</div>
+                                </div>
+                            </div>
+                            <button class="close-btn" onclick="event.stopPropagation(); closeDevice('{{ name }}')">
+                                ✕ Close
                             </button>
-                        </form>
-                        {% endfor %}
+                        </div>
+
+                        <div class="ports-grid">
+                            {% for port in device.ports %}
+                            <form class="port-form" method="POST" action="/toggle">
+                                <input type="hidden" name="device" value="{{ name }}">
+                                <input type="hidden" name="port_id" value="{{ port.id }}">
+                                <button type="submit" class="port-btn status-{{ port.status }}">
+                                    <div class="port-interface">{{ port.interface }}</div>
+                                    <div class="port-label">Port {{ port.id }}</div>
+                                    {% if port.connected %}
+                                    <div class="port-connection">→ {{ port.connected }}</div>
+                                    {% endif %}
+                                    <div class="port-status">{{ port.status|upper }}</div>
+                                </button>
+                            </form>
+                            {% endfor %}
+                        </div>
                     </div>
                 </div>
                 {% endfor %}
             </div>
         </section>
 
-        <!-- Legend -->
         <section class="legend">
             <h3>Legend</h3>
             <div class="legend-items">
@@ -375,10 +531,45 @@
                     <span>Port DOWN (Inactive)</span>
                 </div>
                 <div class="legend-item">
-                    <span class="info-text">💡 Click any port to toggle status</span>
+                    <span class="info-text">💡 Click device to view ports • Click port to toggle status</span>
                 </div>
             </div>
         </section>
     </div>
+
+    <script>
+        function toggleDevice(deviceName) {
+            const card = document.getElementById('device-' + deviceName);
+            const isExpanded = card.classList.contains('expanded');
+            
+            // ปิด card อื่นๆ
+            document.querySelectorAll('.device-card.expanded').forEach(el => {
+                if (el.id !== 'device-' + deviceName) {
+                    el.classList.remove('expanded');
+                }
+            });
+            
+            // สลับ card ที่คลิก
+            if (isExpanded) {
+                card.classList.remove('expanded');
+            } else {
+                card.classList.add('expanded');
+            }
+        }
+
+        function closeDevice(deviceName) {
+            const card = document.getElementById('device-' + deviceName);
+            card.classList.remove('expanded');
+        }
+
+        // คลิกข้างนอก card จะปิด card ทั้งหมด
+        document.addEventListener('click', function(event) {
+            if (!event.target.closest('.device-card')) {
+                document.querySelectorAll('.device-card.expanded').forEach(el => {
+                    el.classList.remove('expanded');
+                });
+            }
+        });
+    </script>
 </body>
 </html>
